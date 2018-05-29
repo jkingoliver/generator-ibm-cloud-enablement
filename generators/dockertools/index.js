@@ -28,24 +28,18 @@ module.exports = class extends Generator {
 	constructor(args, opts) {
 		super(args, opts);
 
-		if (typeof (opts.bluemix) === 'string') {
-			this.bluemix = JSON.parse(opts.bluemix || '{}');
+		// opts -> this.options via Yeoman Generator (super)
+
+		if (typeof (this.options.bluemix) === 'string') {
+			this.bluemix = JSON.parse(this.options.bluemix || '{}');
 		} else {
-			this.bluemix = opts.bluemix;
+			this.bluemix = this.options.bluemix;
 		}
 
-		if(typeof (opts) === 'string'){
-			this.opts = JSON.parse(opts || '{}');
+		if (typeof(this.options.services) === 'string') {
+			this.options.services  = JSON.parse(this.options.services || '[]');
 		} else {
-			this.opts = opts.cloudContext || opts;
-		}
-
-		this.opts.libertyBeta = opts.libertyBeta;
-
-		if (typeof(this.opts.services) === 'string') {
-			this.opts.services  = JSON.parse(opts.services || '[]');
-		} else { 
-			this.opts.services = opts.services || [];
+			this.options.services = this.options.services || [];
 		}
 	}
 
@@ -102,7 +96,7 @@ module.exports = class extends Generator {
 					compilationOptions = compilationOptions + " " + services[servKey].compilationOptions;
 				}
 			}
-			
+
 			if(services[servKey].envs){
 				serviceEnvs.push(services[servKey].envs);
 			}
@@ -161,23 +155,23 @@ module.exports = class extends Generator {
 				compilationOptions: compilationOptions
 			});
 		}
-		
-		if(this.opts.services.length > 0){
+
+		if(this.options.services.length > 0){
 			this._copyTemplateIfNotExists(FILENAME_DOCKERCOMPOSE, 'swift/docker-compose.yml', {
 				containerName: `${applicationName.toLowerCase()}-swift-run`,
 				image: `${applicationName.toLowerCase()}-swift-run`,
 				port,
-				links: this.opts.services,
-				envs: this.opts.services.length > 0 ? serviceEnvs : [],
-				images: this.opts.services
+				links: this.options.services,
+				envs: this.options.services.length > 0 ? serviceEnvs : [],
+				images: this.options.services
 			});
-			this._copyTemplateIfNotExists(FILENAME_DOCKERCOMPOSE_TOOLS, 'swift/docker-compose-tools.yml', { 
+			this._copyTemplateIfNotExists(FILENAME_DOCKERCOMPOSE_TOOLS, 'swift/docker-compose-tools.yml', {
 				image: `${applicationName.toLowerCase()}-swift-run`,
 				containerName: `${applicationName.toLowerCase()}-swift-run`,
-				envs: this.opts.services.length > 0 ? serviceEnvs : [],
+				envs: this.options.services.length > 0 ? serviceEnvs : [],
 				ports: [port],
-				images: this.opts.services
-				
+				images: this.options.services
+
 			});
 		}
 
@@ -190,9 +184,9 @@ module.exports = class extends Generator {
 
 	_generateNodeJS() {
 		const applicationName = Utils.sanitizeAlphaNum(this.bluemix.name);
-		const dockerFileRun = this.opts.services ? 'docker-compose.yml' : 'Dockerfile';
-		const dockerFileTools = this.opts.services ? 'docker-compose-tools.yml' : 'Dockerfile-tools';
-		const port = this.opts.port ? this.opts.port : '3000';
+		const dockerFileRun = this.options.services ? 'docker-compose.yml' : 'Dockerfile';
+		const dockerFileTools = this.options.services ? 'docker-compose-tools.yml' : 'Dockerfile-tools';
+		const port = this.options.port ? this.options.port : '3000';
 
 		// Define metadata for all services that
 		// require custom logic in Dockerfiles
@@ -211,11 +205,11 @@ module.exports = class extends Generator {
 					servicesPackages.push(services[servKey].package);
 				}
 			}
-			
+
 			if(services[servKey].envs){
 				serviceEnvs.push(services[servKey].envs);
 			}
-		} 
+		}
 
 
 		const cliConfig = {
@@ -240,30 +234,30 @@ module.exports = class extends Generator {
 		};
 
 		this._copyTemplateIfNotExists(FILENAME_CLI_CONFIG, 'cli-config-common.yml', {cliConfig});
-		
-		this._copyTemplateIfNotExists(FILENAME_DOCKERFILE , 'node/Dockerfile', { port, servicesPackages });
-		
-		this._copyTemplateIfNotExists(FILENAME_DOCKERFILE_TOOLS, 'node/Dockerfile-tools', { port });
-		
-		this._copyTemplateIfNotExists(FILENAME_DOCKER_IGNORE, 'node/dockerignore', {});
-		
 
-		if(this.opts.services){
+		this._copyTemplateIfNotExists(FILENAME_DOCKERFILE , 'node/Dockerfile', { port, servicesPackages });
+
+		this._copyTemplateIfNotExists(FILENAME_DOCKERFILE_TOOLS, 'node/Dockerfile-tools', { port });
+
+		this._copyTemplateIfNotExists(FILENAME_DOCKER_IGNORE, 'node/dockerignore', {});
+
+
+		if(this.options.services){
 			this._copyTemplateIfNotExists(FILENAME_DOCKERCOMPOSE, 'node/docker-compose.yml', {
 				containerName: `${applicationName.toLowerCase()}-express-run`,
 				image: `${applicationName.toLowerCase()}-express-run`,
 				port,
-				links: this.opts.services,
-				envs: this.opts.services.length > 0 ? serviceEnvs : [],
-				images: this.opts.services
+				links: this.options.services,
+				envs: this.options.services.length > 0 ? serviceEnvs : [],
+				images: this.options.services
 			});
-			this._copyTemplateIfNotExists(FILENAME_DOCKERCOMPOSE_TOOLS, 'node/docker-compose-tools.yml', { 
+			this._copyTemplateIfNotExists(FILENAME_DOCKERCOMPOSE_TOOLS, 'node/docker-compose-tools.yml', {
 				image: `${applicationName.toLowerCase()}-express-run`,
 				containerName: `${applicationName.toLowerCase()}-express-run`,
-				envs: this.opts.services.length > 0 ? serviceEnvs : [],
-				images: this.opts.services,
+				envs: this.options.services.length > 0 ? serviceEnvs : [],
+				images: this.options.services,
 				ports: [port]
-				
+
 			});
 		}
 
@@ -279,12 +273,17 @@ module.exports = class extends Generator {
 	}
 
 	_generateJava() {
-		if(!this.opts.appName) {
-			this.opts.appName = Utils.sanitizeAlphaNum(this.bluemix.name);
+		if(!this.options.appName) {
+			this.options.appName = Utils.sanitizeAlphaNum(this.bluemix.name);
 		}
 		let dir = this.bluemix.backendPlatform.toLowerCase();
 
-		if(!this.opts.platforms || this.opts.platforms.includes('cli')) {
+		if (this.options.libertyVersion === 'beta') {
+			this.options.libertyBeta = true
+		}
+
+
+		if(!this.options.platforms || this.options.platforms.includes('cli')) {
 			/* Common cli-config template */
 			if (this.fs.exists(this.destinationPath(FILENAME_CLI_CONFIG))){
 				this.log(FILENAME_CLI_CONFIG, "already exists, skipping.");
@@ -292,7 +291,7 @@ module.exports = class extends Generator {
 				this._writeHandlebarsFile(
 					dir + '/cli-config.yml.template',
 					FILENAME_CLI_CONFIG,
-					this.opts
+					this.options
 				);
 			}
 
@@ -302,7 +301,7 @@ module.exports = class extends Generator {
 				this._writeHandlebarsFile(
 					dir + '/Dockerfile-tools.template',
 					FILENAME_DOCKERFILE_TOOLS,
-					this.opts
+					this.options
 				);
 			}
 		}
@@ -313,7 +312,7 @@ module.exports = class extends Generator {
 			this._writeHandlebarsFile(
 				dir + '/Dockerfile.template',
 				FILENAME_DOCKERFILE,
-				this.opts
+				this.options
 			);
 		}
 
@@ -323,7 +322,7 @@ module.exports = class extends Generator {
 			this._writeHandlebarsFile(
 				dir + '/dockerignore.template',
 				FILENAME_DOCKER_IGNORE,
-				this.opts
+				this.options
 			);
 		}
 	}
@@ -337,9 +336,9 @@ module.exports = class extends Generator {
 
 	_generatePython() {
 		const applicationName = Utils.sanitizeAlphaNum(this.bluemix.name);
-		const port = this.opts.port ? this.opts.port : '3000';
-		const dockerFileRun = this.opts.services ? 'docker-compose.yml' : 'Dockerfile';
-		const dockerFileTools = this.opts.services ? 'docker-compose-tools.yml' : 'Dockerfile-tools';
+		const port = this.options.port ? this.options.port : '3000';
+		const dockerFileRun = this.options.services ? 'docker-compose.yml' : 'Dockerfile';
+		const dockerFileTools = this.options.services ? 'docker-compose-tools.yml' : 'Dockerfile-tools';
 
 		// Define metadata for all services that
 		// require custom logic in Dockerfiles
@@ -358,7 +357,7 @@ module.exports = class extends Generator {
 					servicesPackages.push(services[servKey].package);
 				}
 			}
-			
+
 			if(services[servKey].envs){
 				serviceEnvs.push(services[servKey].envs);
 			}
@@ -378,33 +377,33 @@ module.exports = class extends Generator {
 			imageNameRun: `${applicationName.toLowerCase()}-flask-run`,
 			imageNameTools: `${applicationName.toLowerCase()}-flask-tools`,
 			buildCmdRun: 'python manage.py build',
-			testCmd: this.opts.enable
+			testCmd: this.options.enable
 				? 'echo No test command specified in cli-config'
 				: 'python manage.py test',
 			buildCmdDebug: 'python manage.py build',
 			runCmd: '',
 			stopCmd: '',
-			debugCmd: this.opts.enable
+			debugCmd: this.options.enable
 				? 'echo No debug command specified in cli-config'
 				: 'python manage.py debug',
 			chartPath: `chart/${applicationName.toLowerCase()}`
 		};
-		
-		if(this.opts.services.length > 0){
+
+		if(this.options.services.length > 0){
 			this._copyTemplateIfNotExists(FILENAME_DOCKERCOMPOSE, 'python/docker-compose.yml', {
 				containerName: `${applicationName.toLowerCase()}-flask-run`,
 				image: `${applicationName.toLowerCase()}-flask-run`,
 				port,
-				links: this.opts.services,
-				envs: this.opts.services.length > 0 ? serviceEnvs : [],
-				images: this.opts.services
+				links: this.options.services,
+				envs: this.options.services.length > 0 ? serviceEnvs : [],
+				images: this.options.services
 			});
-			this._copyTemplateIfNotExists(FILENAME_DOCKERCOMPOSE_TOOLS, 'python/docker-compose-tools.yml', { 
+			this._copyTemplateIfNotExists(FILENAME_DOCKERCOMPOSE_TOOLS, 'python/docker-compose-tools.yml', {
 				image: `${applicationName.toLowerCase()}-flask-run`,
 				containerName: `${applicationName.toLowerCase()}-flask-run`,
 				ports: [port],
-				images: this.opts.services
-				
+				images: this.options.services
+
 			});
 		}
 
@@ -426,7 +425,7 @@ module.exports = class extends Generator {
 				this.templatePath('python/Dockerfile'),
 				this.destinationPath(FILENAME_DOCKERFILE), {
 					port: port,
-					enable: this.opts.enable,
+					enable: this.options.enable,
 					language: this.bluemix.backendPlatform,
 					name: this.bluemix.name,
 					servicesPackages: servicesPackages
@@ -448,7 +447,7 @@ module.exports = class extends Generator {
 		}
 
 		const FILENAME_MANAGEMENT = "manage.py";
-		if (!this.opts.enable) {
+		if (!this.options.enable) {
 			if (this.fs.exists(this.destinationPath(FILENAME_MANAGEMENT))){
 				this.log(FILENAME_MANAGEMENT, "already exists, skipping.");
 			} else {
@@ -463,23 +462,23 @@ module.exports = class extends Generator {
 			this.templatePath('python/dockerignore'),
 			this.destinationPath('.dockerignore')
 		);
-		
-		if(this.opts.services.length > 0){
+
+		if(this.options.services.length > 0){
 			this._copyTemplateIfNotExists(FILENAME_DOCKERCOMPOSE, 'python/docker-compose.yml', {
 				containerName: `${applicationName.toLowerCase()}-express-run`,
 				image: `${applicationName.toLowerCase()}-express-run`,
 				port,
-				links: this.opts.services,
-				envs: this.opts.services.length > 0 ? serviceEnvs : [],
-				images: this.opts.services
+				links: this.options.services,
+				envs: this.options.services.length > 0 ? serviceEnvs : [],
+				images: this.options.services
 			});
-			this._copyTemplateIfNotExists(FILENAME_DOCKERCOMPOSE_TOOLS, 'python/docker-compose-tools.yml', { 
+			this._copyTemplateIfNotExists(FILENAME_DOCKERCOMPOSE_TOOLS, 'python/docker-compose-tools.yml', {
 				image: `${applicationName.toLowerCase()}-express-run`,
 				containerName: `${applicationName.toLowerCase()}-express-run`,
-				envs: this.opts.services.length > 0 ? serviceEnvs : [],
-				images: this.opts.services,
+				envs: this.options.services.length > 0 ? serviceEnvs : [],
+				images: this.options.services,
 				ports: [port]
-				
+
 			});
 		}
 
@@ -487,10 +486,10 @@ module.exports = class extends Generator {
 
 	_generateDjango() {
 		const applicationName = Utils.sanitizeAlphaNum(this.bluemix.name);
-		const port = this.opts.port ? this.opts.port : '3000';
-		
-		const dockerFileRun = this.opts.services ? 'docker-compose.yml' : 'Dockerfile';
-		const dockerFileTools = this.opts.services ? 'docker-compose-tools.yml' : 'Dockerfile-tools';
+		const port = this.options.port ? this.options.port : '3000';
+
+		const dockerFileRun = this.options.services ? 'docker-compose.yml' : 'Dockerfile';
+		const dockerFileTools = this.options.services ? 'docker-compose-tools.yml' : 'Dockerfile-tools';
 
 		// Define metadata for all services that
 		// require custom logic in Dockerfiles
@@ -530,13 +529,13 @@ module.exports = class extends Generator {
 			imageNameRun: `${applicationName.toLowerCase()}-django-run`,
 			imageNameTools: `${applicationName.toLowerCase()}-django-tools`,
 			buildCmdRun: 'python -m compileall .',
-			testCmd: this.opts.enable
+			testCmd: this.options.enable
 				? 'echo No test command specified in cli-config'
 				: 'python manage.py test',
 			buildCmdDebug: 'python -m compileall .',
 			runCmd: '',
 			stopCmd: '',
-			debugCmd: this.opts.enable
+			debugCmd: this.options.enable
 				? 'echo No debug command specified in cli-config'
 				: `python manage.py runserver --noreload`,
 			chartPath: `chart/${applicationName.toLowerCase()}`
@@ -560,7 +559,7 @@ module.exports = class extends Generator {
 				this.templatePath('python/Dockerfile'),
 				this.destinationPath(FILENAME_DOCKERFILE), {
 					port: port,
-					enable: this.opts.enable,
+					enable: this.options.enable,
 					servicesPackages: servicesPackages,
 					language: this.bluemix.backendPlatform,
 					name: this.bluemix.name
@@ -580,23 +579,23 @@ module.exports = class extends Generator {
 				}
 			);
 		}
-		
-		if(this.opts.services.length > 0){
+
+		if(this.options.services.length > 0){
 			this._copyTemplateIfNotExists(FILENAME_DOCKERCOMPOSE, 'python/docker-compose.yml', {
 				containerName: `${applicationName.toLowerCase()}-express-run`,
 				image: `${applicationName.toLowerCase()}-django-run`,
 				port,
-				links: this.opts.services,
-				envs: this.opts.services.length > 0 ? serviceEnvs : [],
-				images: this.opts.services
+				links: this.options.services,
+				envs: this.options.services.length > 0 ? serviceEnvs : [],
+				images: this.options.services
 			});
-			this._copyTemplateIfNotExists(FILENAME_DOCKERCOMPOSE_TOOLS, 'python/docker-compose-tools.yml', { 
+			this._copyTemplateIfNotExists(FILENAME_DOCKERCOMPOSE_TOOLS, 'python/docker-compose-tools.yml', {
 				image: `${applicationName.toLowerCase()}-django-run`,
 				containerName: `${applicationName.toLowerCase()}-django-run`,
-				envs: this.opts.services.length > 0 ? serviceEnvs : [],
-				images: this.opts.services,
+				envs: this.options.services.length > 0 ? serviceEnvs : [],
+				images: this.options.services,
 				ports: [port]
-				
+
 			});
 		}
 
